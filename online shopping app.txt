@@ -1,0 +1,260 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class Main {
+
+    static final String URL = "jdbc:mysql://localhost:3306/online_shopping";
+    static final String USER = "root";
+    static final String PASSWORD = "your_password";
+
+    static Scanner sc = new Scanner(System.in);
+
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println("\n==== ONLINE SHOPPING SYSTEM ====");
+            System.out.println("1. Register");
+            System.out.println("2. Login");
+            System.out.println("3. Exit");
+            System.out.print("Choose option: ");
+
+            int choice = sc.nextInt();
+            sc.nextLine();
+
+            switch (choice) {
+                case 1:
+                    register();
+                    break;
+                case 2:
+                    login();
+                    break;
+                case 3:
+                    System.exit(0);
+                default:
+                    System.out.println("Invalid choice!");
+            }
+        }
+    }
+
+    // REGISTER
+    static void register() {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            System.out.print("Enter Name: ");
+            String name = sc.nextLine();
+
+            System.out.print("Enter Email: ");
+            String email = sc.nextLine();
+
+            System.out.print("Enter Password: ");
+            String password = sc.nextLine();
+
+            String sql = "INSERT INTO users(name,email,password,role) VALUES(?,?,?,?)";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setString(2, email);
+            ps.setString(3, password);
+            ps.setString(4, "USER");
+
+            ps.executeUpdate();
+            System.out.println("Registration Successful!");
+
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // LOGIN
+    static void login() {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            System.out.print("Enter Email: ");
+            String email = sc.nextLine();
+
+            System.out.print("Enter Password: ");
+            String password = sc.nextLine();
+
+            String sql = "SELECT * FROM users WHERE email=? AND password=?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, email);
+            ps.setString(2, password);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                int userId = rs.getInt("id");
+                String role = rs.getString("role");
+
+                System.out.println("Login Successful!");
+
+                if (role.equals("ADMIN")) {
+                    adminMenu();
+                } else {
+                    userMenu(userId);
+                }
+            } else {
+                System.out.println("Invalid Credentials!");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+    }
+
+    // USER MENU
+    static void userMenu(int userId) {
+        while (true) {
+            System.out.println("\n1. View Products");
+            System.out.println("2. Add to Cart");
+            System.out.println("3. Checkout");
+            System.out.println("4. Logout");
+            System.out.print("Choose: ");
+            int choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    viewProducts();
+                    break;
+                case 2:
+                    addToCart(userId);
+                    break;
+                case 3:
+                    checkout(userId);
+                    break;
+                case 4:
+                    return;
+                default:
+                    System.out.println("Invalid choice");
+            }
+        }
+    }
+
+    // ADMIN MENU
+    static void adminMenu() {
+        while (true) {
+            System.out.println("\n1. Add Product");
+            System.out.println("2. View Products");
+            System.out.println("3. Logout");
+            System.out.print("Choose: ");
+            int choice = sc.nextInt();
+
+            switch (choice) {
+                case 1:
+                    addProduct();
+                    break;
+                case 2:
+                    viewProducts();
+                    break;
+                case 3:
+                    return;
+                default:
+                    System.out.println("Invalid choice");
+            }
+        }
+    }
+
+    // ADD PRODUCT
+    static void addProduct() {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            sc.nextLine();
+            System.out.print("Product Name: ");
+            String name = sc.nextLine();
+
+            System.out.print("Price: ");
+            double price = sc.nextDouble();
+
+            System.out.print("Quantity: ");
+            int qty = sc.nextInt();
+
+            String sql = "INSERT INTO products(name,price,quantity) VALUES(?,?,?)";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setString(1, name);
+            ps.setDouble(2, price);
+            ps.setInt(3, qty);
+
+            ps.executeUpdate();
+            System.out.println("Product Added!");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // VIEW PRODUCTS
+    static void viewProducts() {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            String sql = "SELECT * FROM products";
+            Statement st = con.createStatement();
+            ResultSet rs = st.executeQuery(sql);
+
+            System.out.println("\nID | Name | Price | Quantity");
+            while (rs.next()) {
+                System.out.println(
+                        rs.getInt("id") + " | " +
+                        rs.getString("name") + " | " +
+                        rs.getDouble("price") + " | " +
+                        rs.getInt("quantity")
+                );
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // ADD TO CART
+    static void addToCart(int userId) {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            System.out.print("Enter Product ID: ");
+            int productId = sc.nextInt();
+
+            System.out.print("Enter Quantity: ");
+            int quantity = sc.nextInt();
+
+            String sql = "INSERT INTO cart(user_id,product_id,quantity) VALUES(?,?,?)";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, userId);
+            ps.setInt(2, productId);
+            ps.setInt(3, quantity);
+
+            ps.executeUpdate();
+            System.out.println("Added to Cart!");
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    // CHECKOUT
+    static void checkout(int userId) {
+        try (Connection con = DriverManager.getConnection(URL, USER, PASSWORD)) {
+
+            String sql = "SELECT SUM(p.price * c.quantity) AS total " +
+                    "FROM cart c JOIN products p ON c.product_id=p.id WHERE c.user_id=?";
+            PreparedStatement ps = con.prepareStatement(sql);
+            ps.setInt(1, userId);
+
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                double total = rs.getDouble("total");
+
+                String orderSql = "INSERT INTO orders(user_id,total_amount) VALUES(?,?)";
+                PreparedStatement orderPs = con.prepareStatement(orderSql);
+                orderPs.setInt(1, userId);
+                orderPs.setDouble(2, total);
+                orderPs.executeUpdate();
+
+                Statement clearCart = con.createStatement();
+                clearCart.executeUpdate("DELETE FROM cart WHERE user_id=" + userId);
+
+                System.out.println("Order Placed Successfully! Total = " + total);
+            }
+
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
